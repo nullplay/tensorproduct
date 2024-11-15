@@ -12,8 +12,6 @@ $$Out[i, u, v] = \sum_{j, k} Input1[j, u] \cdot Input2[k, v] \cdot weight[i, j, 
 
 The structured sparsity and raggedness stem from the nature of the irreducible representations, where different angular momentum states (e.g., \(j, k\)) dictate the ranges of \(u\) and \(v\), respectively. This hierarchical and sparse interaction pattern ensures the operation remains computationally efficient yet mathematically rigorous.
 
-
-
 ### Example of Tensor Product in Action
 
 Consider a tensor product where:
@@ -29,19 +27,25 @@ Consider a tensor product where:
   $k=2 \rightarrow v=0:32$
 
 If the weight tensor `weight[i, j, k]` specifies valid pairs like:  
-$(i=0, j=0, k=0)$  
-$(i=0, j=1, k=2)$
+- $(i=0, j=0, k=0)$  
+- $(i=0, j=1, k=2)$
 
-The contributions to $Out[0, u, v]$ are as follows:
+The contributions to $Out[0, u, v]$ are computed as follows:
 
-1. For $(j=0, k=0)$, the ranges are: $u = 0:16, \ v = 0:64$
-2. For $(j=1, k=2)$, the ranges are: $u = 0:256, \ v = 0:32$
+1. For $(j=0, k=0)$:
+   - Ranges: $u = 0:16$, $v = 0:64$  
+   - Computation: $Out[0, 0:16, 0:64] += Input1[0, 0:16] \cdot Input2[0, 0:64] \cdot weight[0, 0, 0]$
 
-So, the resulting range for $Out[0, u, v]$ spans on max (u,v) of them:  
-$u = 0:256, \ v = 0:64$
+2. For $(j=1, k=2)$:
+   - Ranges: $u = 0:256$, $v = 0:32$  
+   - Computation: $Out[0, 0:256, 0:32] += Input1[1, 0:256] \cdot Input2[2, 0:32] \cdot weight[0, 1, 2]$
 
-This reflects the merged ranges for $u$ and $v$, while adhering to the structured, sparse, and ragged patterns of the input data.
+The resulting range for $Out[0, u, v]$ spans the maximum ranges for $u$ and $v$:  
+$$u = 0:256, \quad v = 0:64$$
 
+For each $i$, $Out[i, u, v]$ forms a ragged tensor, where the size of the dense $(u, v)$ block depends on the sparse indices $(j, k)$ specified by `weight[i, j, k]`. 
+
+This example highlights how the tensor product efficiently merges sparse, structured, and ragged data into a unified representation while maintaining computational efficiency.
 
 ### Proposal Objective
 
