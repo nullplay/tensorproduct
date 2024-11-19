@@ -6,27 +6,8 @@ import numpy as np
 import jax
 from jax_baseline_tp import tensor_product, benchmark_jax
 import functools
-
-def sparse_tensor_product(coo, coovalue, Input1, Input2, output, B, C, P):
-  imap1 = coo[:,0]
-  imap2 = coo[:,1]
-  omap = coo[:,2]
-  # Gather the necessary slices using index_select
-  Input1_selected = torch.index_select(Input1, 2, imap1)  # Shape: [B, C, P]
-  Input2_selected = torch.index_select(Input2, 2, imap2)  # Shape: [B, C, P]
-
-  # Reshape coovalue for broadcasting
-  coovalue_expanded = coovalue.view(1, 1, -1)  # Shape: [1, 1, P]
-
-  # Compute the intermediate product
-  product = coovalue_expanded * Input1_selected * Input2_selected  # Shape: [B, C, P]
-
-  # Scatter the product into the output tensor
-  omap_expanded = omap.expand(B, C, P)  # Shape: [B, C, P]
-  output.scatter_add_(2, omap_expanded, product)
-
-  return output
-
+from my_coo import my_coo
+from my_coo_i_jk import pad_coo, my_coo_i_jk
 
 def generate_cg(input1_irreps, input2_irreps):
     cg_matrices = []
@@ -78,13 +59,33 @@ def generate_e3nn_buffers(lmax, channel, Batch):
   cg = generate_cg(input1_e3nn.irreps, input2_e3nn.irreps)
   coovalue, coo = convert_to_coo(cg)
   
+  # Function to calculate avg nnz per axis
+  def avg_nnz_per_axis(coo, axis):
+      # Extract the desired axis
+      indices = coo[:, axis]
+      
+      # Count occurrences of each unique index
+      nnz_per_axis = torch.bincount(indices)
+      
+      # Compute the average
+      avg_nnz = nnz_per_axis.float().mean()
+      return avg_nnz
+
+  avg_nnz_i = avg_nnz_per_axis(coo, axis=0)
+  avg_nnz_j = avg_nnz_per_axis(coo, axis=1)
+  avg_nnz_k = avg_nnz_per_axis(coo, axis=2)
+
+  print(f"Average nnz per i: {avg_nnz_i}")
+  print(f"Average nnz per j: {avg_nnz_j}")
+  print(f"Average nnz per k: {avg_nnz_k}")
+
   return input1_e3nn, input1, input2_e3nn, input2, output, coo, coovalue
 
 if __name__ == "__main__":
 
     Bs = [1e4]
-    lmaxs = range(2, 3)
-    channel = 32
+    lmaxs = range(6, 7)
+    channel = 8 
     
     for Batch in Bs:
         for lmax in lmaxs:
@@ -94,21 +95,26 @@ if __name__ == "__main__":
             LMax = input1.shape[-1]
             KMax = output.shape[-1]
             UMax = channel
-           
-            input1 = input1.reshape(Batch, channel, -1)
-            input2 = input2.reshape(Batch, channel, -1)
-            result = sparse_tensor_product(coo, coovalue, input1, input2, output, Batch, channel, coo.shape[0])
+            #Padding
+            wsize = 4 
+            i_,j_,k_,val_ = pad_coo(coo[:,2],coo[:,0],coo[:,1],coovalue,wsize)
+            output2 = torch.zeros_like(output)
+
+            result = my_coo(coo, coovalue, input1, input2, output, Batch, channel, coo.shape[0])
+            result2 = my_coo_i_jk(j_, k_, i_, val_, input1, input2, output2, Batch, channel, i_.shape[0], wsize)
            
             ref = tensor_product(input1_e3nn, input2_e3nn, sorted=False, regroup_output=False).array
 
-            print("3. halide vs e3nn")
+            print("correctness : torch vs e3nn")
             np.testing.assert_allclose(result.cpu().numpy(), ref, atol=1e-2)
+            np.testing.assert_allclose(result2.cpu().numpy(), ref, atol=1e-2)
             print("PASS\n")
 
             
             tensor_product_jax = jax.jit(functools.partial(tensor_product, sorted=False, regroup_output=False))
 
             from torch._inductor.utils import print_performance
-            print(f"ours - batch {Batch} lmax {lmax} channel {channel} {print_performance(lambda : sparse_tensor_product(coo, coovalue, input1, input2, output, Batch, channel, coo.shape[0]))*1000:.3f} ms")
+            print(f"ours - batch {Batch} lmax {lmax} channel {channel} {print_performance(lambda : my_coo(coo, coovalue, input1, input2, output, Batch, channel, coo.shape[0]))*1000:.3f} ms")
+            print(f"ours2 - batch {Batch} lmax {lmax} channel {channel} {print_performance(lambda :  my_coo_i_jk(j_, k_, i_, val_, input1, input2, output2, Batch, channel, i_.shape[0], wsize))*1000:.3f} ms")
             
             print(f"jax - batch {Batch} lmax {lmax} channel {channel} {benchmark_jax(tensor_product_jax, input1_e3nn, input2_e3nn):.3f} ms")
