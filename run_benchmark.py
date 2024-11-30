@@ -83,9 +83,9 @@ def generate_e3nn_buffers(lmax, channel, Batch):
 
 if __name__ == "__main__":
 
-    Bs = [1e4]
-    lmaxs = range(6, 7)
-    channel = 8 
+    Bs = [3e4]
+    lmaxs = range(5, 6)
+    channel = 1 
     
     for Batch in Bs:
         for lmax in lmaxs:
