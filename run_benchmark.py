@@ -78,12 +78,12 @@ def generate_e3nn_buffers(lmax, channel, Batch):
   print(f"Average nnz per i: {avg_nnz_i}")
   print(f"Average nnz per j: {avg_nnz_j}")
   print(f"Average nnz per k: {avg_nnz_k}")
-
+  print(f"COO shape: {coo.shape}")
   return input1_e3nn, input1, input2_e3nn, input2, output, coo, coovalue
 
 if __name__ == "__main__":
 
-    Bs = [3e4]
+    Bs = [1e5]
     lmaxs = range(5, 6)
     channel = 1 
     

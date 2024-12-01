@@ -1,5 +1,7 @@
 import torch
 import numpy as np
+from torch._inductor.utils import fresh_inductor_cache
+
 # Input1_[b,c,p] = Input1[b,c,imap1[p]]
 # Input2_[b,c,p] = Input2[b,c,imap2[p]]
 # product[b,c,p] = W[p] * Input1_[b,c,p] * Input2_[b,c,p]
@@ -88,6 +90,7 @@ def pad_coo(w, o, i, val, window_size):
     return res1, res2, res3, res4
 
 
+@fresh_inductor_cache()
 @torch.compile(mode="max-autotune-no-cudagraphs")
 def my_coo_i_jk(imap1, imap2, omap, W, Input1, Input2, output, B, C, Po, Pi):
   imap1_flat = imap1.reshape(-1)  # Shape: [Po*Pi]
