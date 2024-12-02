@@ -4,6 +4,7 @@ import e3nn_jax
 import numpy as np
 import jax
 import functools
+
 class Instruction:
     """Defines an instruction for the tensor product."""
     def __init__(self, i_in1, i_in2, i_out, connection_mode, has_weight, path_weight=1.0, path_shape=None):
@@ -61,7 +62,7 @@ def generate_cg_widx(irreps_in1, irreps_in2, irreps_out, instructions):
 
     mask = cg_matrices 
     weightindices = w_matrices[np.nonzero(mask)]
-    return mask, weightindices
+    return mask, torch.tensor(weightindices, device="cuda")
 
 
 def convert_to_coo(array):
@@ -71,3 +72,95 @@ def convert_to_coo(array):
   return torch.tensor(coovalue,device="cuda"), torch.tensor(coo,device="cuda")
 
 
+
+############
+# precompute
+############
+
+def split_into_2d(tensor, irreps, B, M):
+    """
+    Splits a 1D tensor into 2D slices according to irreps dimensions.
+
+    Args:
+        tensor: Input tensor of shape (B, total_length).
+        irreps: List of irreducible representations.
+        B: Batch size.
+        M: Target second dimension of the reshaped slices.
+
+    Returns:
+        A 2D tensor of shape (B, M, -1).
+    """
+    curr = 0
+    slices = []
+    for ir in e3nn_jax.Irreps(irreps):
+        dim = ir.dim
+        slices.append(tensor[:, curr:curr + dim].reshape(B, M, -1))
+        curr += dim
+    return np.concatenate(slices, axis=-1)
+
+
+def prepare_inputs(x1_torch, x2_torch, irreps_in, irreps_sh, irreps_out, ws_torch, B, U, V):
+    """
+    Prepares inputs by splitting tensors into 2D slices.
+
+    Args:
+        x1_torch: Input tensor 1 (B, length).
+        x2_torch: Input tensor 2 (B, length).
+        irreps_in: Irreps for x1_torch.
+        irreps_sh: Irreps for x2_torch.
+        irreps_out: Output irreps.
+        ws_torch: Weight tensor.
+        B: Batch size.
+        U, V: Target reshape dimensions for x1 and x2.
+
+    Returns:
+        Prepared tensors x1_2d, x2_2d, ws_torch.
+    """
+    x1_2d = split_into_2d(x1_torch, irreps_in, B, U)
+    x2_2d = split_into_2d(x2_torch, irreps_sh, B, V)
+
+    x1_torch = torch.tensor(x1_2d, device="cuda")
+    x2_torch = torch.tensor(x2_2d, device="cuda")
+    ws_torch = torch.stack(ws_torch, dim=3).cuda()
+    return x1_torch, x2_torch, ws_torch
+
+
+def compute_output_shape(irreps_out, W):
+    """
+    Computes the output tensor shape based on irreps.
+
+    Args:
+        irreps_out: List of irreducible representations.
+        W: Output dimension.
+
+    Returns:
+        Total output length.
+    """
+    return sum(ir.dim for ir in e3nn_jax.Irreps(irreps_out)) // W
+
+
+
+##########
+# epilogue
+##########
+
+def reconstruct_from_2d(tensor_2d, irreps, B, W):
+    """
+    Reconstructs a 1D tensor from a 2D tensor based on irreps.
+
+    Args:
+        tensor_2d: Input tensor of shape (B, W, K).
+        irreps: List of irreducible representations.
+        U: Reshape dimension.
+
+    Returns:
+        A 1D tensor of shape (B, total_length).
+    """
+    curr = 0
+    tensor_1d = []
+    for ir in e3nn_jax.Irreps(irreps):
+        k = ir.dim // W
+        column = tensor_2d[:, :, curr:curr + k].reshape(B, -1)
+        tensor_1d.append(column)
+        curr += k
+    return np.concatenate(tensor_1d, axis=1)
