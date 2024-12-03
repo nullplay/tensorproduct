@@ -2,50 +2,11 @@ import torch
 import numpy as np
 from torch._inductor.utils import fresh_inductor_cache
 
-# Input1_[b,c,p] = Input1[b,c,imap1[p]]
-# Input2_[b,c,p] = Input2[b,c,imap2[p]]
-# product[b,c,p] = W[p] * Input1_[b,c,p] * Input2_[b,c,p]
-# Output[b,c,omap[p]] += product[b,c,p]
 
-# Output[b,c,omap[po]] += W[po,pi] * Input1[b,c,imap1[po,pi]] * Input2[b,c,imap2[po,pi]]
-
-# Padded COO
-#def pad_coo(w, o, i, val, window_size):
-#    w = np.asarray(w) #i
-#    o = np.asarray(o) #j
-#    i = np.asarray(i) #k
-#    val = np.asarray(val) #val
-#    sort_indices = np.lexsort((i,o,w))
-#    w_sorted = w[sort_indices]
-#    o_sorted = o[sort_indices]
-#    i_sorted = i[sort_indices]
-#    val_sorted = val[sort_indices]
-#    unique_w, counts = np.unique(w_sorted, return_counts=True)
-#    counts = counts.astype(int)
-#    padded_counts = np.ceil(counts / window_size).astype(int) * window_size
-#    positions = np.concatenate(([0], np.cumsum(padded_counts[:-1])))
-#    w_padded = np.repeat(unique_w, padded_counts)
-#    o_padded = np.full_like(w_padded, 0, dtype=o.dtype) # -1
-#    i_padded = np.full_like(w_padded, 0, dtype=i.dtype) # -1
-#    val_padded = np.full_like(w_padded, 0.0, dtype=val.dtype) # -1
-#    positions_repeated = np.repeat(positions, counts)
-#    group_offsets = np.repeat(np.arange(len(counts)), counts)
-#    offsets_within_group = np.concatenate([
-#        np.arange(count) for count in counts
-#    ])
-#    indices = positions_repeated + offsets_within_group
-#    o_padded[indices] = o_sorted
-#    i_padded[indices] = i_sorted
-#    val_padded[indices] = val_sorted
-#
-#    res1 = torch.tensor(w_padded[::window_size], device="cuda")
-#    res2 = torch.tensor(o_padded, device="cuda")
-#    res3 = torch.tensor(i_padded, device="cuda")
-#    res4 = torch.tensor(val_padded, device="cuda")
-#    return res1, res2, res3, res4 
-#
-#import torch
-
+#window_size=p1
+#w = output idx
+#o = input1 idx
+#i = input2 idx
 def pad_coo(w, o, i, val, window_size):
     device = "cuda"
     w_max = w.max()
@@ -82,13 +43,14 @@ def pad_coo(w, o, i, val, window_size):
     i_padded[indices] = i_sorted
     val_padded[indices] = val_sorted
 
-    res1 = w_padded[::window_size]
-    res2 = o_padded
-    res3 = i_padded
-    res4 = val_padded
+    res1 = w_padded[::window_size] #P0
+    res2 = o_padded #P0xP1
+    res3 = i_padded #P0xP1
+    res4 = val_padded #P0xP1
 
     return res1, res2, res3, res4
 
+torch._inductor.config.triton.prefer_nd_tiling=True
 
 @fresh_inductor_cache()
 @torch.compile(mode="max-autotune-no-cudagraphs")
@@ -102,7 +64,6 @@ def my_coo_i_jk(imap1, imap2, omap, W, Input1, Input2, output, B, C, Po, Pi):
   Input2_ = Input2_selected.view(B, C, Po, Pi)
 
   W_expanded = W.view(1, 1, Po, Pi)  # Shape: [1, 1, Po, Pi]
-  #product[b,c,po] = w[po,pi] * input1[b,c,po,pi] * input2[b,c,po,pi]
   product_pi = W_expanded * Input1_ * Input2_  # Shape: [B, C, Po, Pi]
   product = product_pi.sum(dim=3)  # Sum over pi dimension, Shape: [B, C, Po]
 
