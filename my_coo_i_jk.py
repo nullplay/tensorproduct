@@ -50,8 +50,6 @@ def pad_coo(w, o, i, val, window_size):
 
     return res1, res2, res3, res4
 
-torch._inductor.config.triton.prefer_nd_tiling=True
-
 @fresh_inductor_cache()
 @torch.compile(mode="max-autotune-no-cudagraphs")
 def my_coo_i_jk(imap1, imap2, omap, W, Input1, Input2, output, B, C, Po, Pi):
