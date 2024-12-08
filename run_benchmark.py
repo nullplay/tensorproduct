@@ -8,6 +8,9 @@ from jax_baseline_tp import tensor_product, benchmark_jax
 import functools
 from my_coo import my_coo
 from my_coo_i_jk import pad_coo, my_coo_i_jk
+from my_coo_triton import my_coo_triton
+
+import triton
 
 def generate_cg(input1_irreps, input2_irreps):
     cg_matrices = []
@@ -86,6 +89,10 @@ if __name__ == "__main__":
     Bs = [1e4]
     lmaxs = range(5, 6)
     channel = 1 
+
+    # Triton block sizes
+    XBLOCK = 32
+    YBLOCK = 32
     
     for Batch in Bs:
         for lmax in lmaxs:
@@ -96,25 +103,29 @@ if __name__ == "__main__":
             KMax = output.shape[-1]
             UMax = channel
             #Padding
-            wsize = 4 
+            wsize = 4
             i_,j_,k_,val_ = pad_coo(coo[:,2],coo[:,0],coo[:,1],coovalue,wsize)
+
             output2 = torch.zeros_like(output)
+            output4 = torch.zeros_like(output2[:,0,:]) # For manual triton output
+
+            input1_no_channel = input1[:,0,:]
+            input2_no_channel = input2[:,0,:]
 
             result = my_coo(coo, coovalue, input1, input2, output, Batch, channel, coo.shape[0])
             result2 = my_coo_i_jk(j_, k_, i_, val_, input1, input2, output2, Batch, channel, i_.shape[0], wsize)
-           
+            my_coo_triton[(triton.cdiv(i_.shape[0], XBLOCK), triton.cdiv(Batch, YBLOCK))](j_, k_, i_, val_, input1_no_channel, input2_no_channel, output4, Batch, i_.shape[0], YBLOCK=YBLOCK, XBLOCK=XBLOCK)
             ref = tensor_product(input1_e3nn, input2_e3nn, sorted=False, regroup_output=False).array
-
             print("correctness : torch vs e3nn")
             np.testing.assert_allclose(result.cpu().numpy(), ref, atol=1e-2)
             np.testing.assert_allclose(result2.cpu().numpy(), ref, atol=1e-2)
+            np.testing.assert_allclose(np.expand_dims(output4.cpu().numpy(), axis=1), ref, atol=1e-2)
             print("PASS\n")
 
-            
             tensor_product_jax = jax.jit(functools.partial(tensor_product, sorted=False, regroup_output=False))
 
             from torch._inductor.utils import print_performance
             print(f"ours - batch {Batch} lmax {lmax} channel {channel} {print_performance(lambda : my_coo(coo, coovalue, input1, input2, output, Batch, channel, coo.shape[0]))*1000:.3f} ms")
             print(f"ours2 - batch {Batch} lmax {lmax} channel {channel} {print_performance(lambda :  my_coo_i_jk(j_, k_, i_, val_, input1, input2, output2, Batch, channel, i_.shape[0], wsize))*1000:.3f} ms")
-            
+            print(f"ours_no_channel_triton - batch {Batch} lmax {lmax} {print_performance(lambda :  my_coo_triton[(triton.cdiv(i_.shape[0], XBLOCK), triton.cdiv(Batch, YBLOCK))](j_, k_, i_, val_, input1_no_channel, input2_no_channel, output4, Batch, i_.shape[0], YBLOCK=YBLOCK, XBLOCK=XBLOCK))*1000:.3f} ms")
             print(f"jax - batch {Batch} lmax {lmax} channel {channel} {benchmark_jax(tensor_product_jax, input1_e3nn, input2_e3nn):.3f} ms")
