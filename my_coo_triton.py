@@ -51,17 +51,6 @@ def my_coo_triton(
     k_idx = tl.load(omap0 + x_index * 4, x_mask)
     out = tl.zeros([XBLOCK, YBLOCK], dtype=tl.float32)
 
-    # Debug asserts
-    tl.device_assert((i_idx_0 >= 0) & (i_idx_0 < l1_dim), "i_idx_0 out of bounds")
-    tl.device_assert((i_idx_1 >= 0) & (i_idx_1 < l1_dim), "i_idx_1 out of bounds")
-    tl.device_assert((i_idx_2 >= 0) & (i_idx_2 < l1_dim), "i_idx_2 out of bounds")
-    tl.device_assert((i_idx_3 >= 0) & (i_idx_3 < l1_dim), "i_idx_3 out of bounds")
-    tl.device_assert((j_idx_0 >= 0) & (j_idx_0 < l2_dim), "j_idx_0 out of bounds")
-    tl.device_assert((j_idx_1 >= 0) & (j_idx_1 < l2_dim), "j_idx_1 out of bounds")
-    tl.device_assert((j_idx_2 >= 0) & (j_idx_2 < l2_dim), "j_idx_2 out of bounds")
-    tl.device_assert((j_idx_3 >= 0) & (j_idx_3 < l2_dim), "j_idx_3 out of bounds")
-    tl.device_assert((k_idx >= 0) & (k_idx < l3_dim), "k_idx out of bounds")
-
     # Now we need to load the input tensors
     input0_loaded = tl.load(input0 + i_idx_0 + y_index * y_stride, x_mask & y_mask)
     input1_loaded = tl.load(input1 + j_idx_0 + y_index * y_stride, x_mask & y_mask)
