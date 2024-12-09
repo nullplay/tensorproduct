@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
             result = my_coo(coo, coovalue, input1, input2, output, Batch, channel, coo.shape[0])
             result2 = my_coo_i_jk(j_, k_, i_, val_, input1, input2, output2, Batch, channel, i_.shape[0], wsize)
-            my_coo_triton[(triton.cdiv(i_.shape[0], XBLOCK), triton.cdiv(Batch, YBLOCK))](j_, k_, i_, val_, input1_no_channel, input2_no_channel, output4, Batch, i_.shape[0], YBLOCK=YBLOCK, XBLOCK=XBLOCK)
+            my_coo_triton[(triton.cdiv(i_.shape[0], XBLOCK), triton.cdiv(Batch, YBLOCK))](j_, k_, i_, val_, input1_no_channel, input2_no_channel, output4, Batch, i_.shape[0], W=wsize, YBLOCK=YBLOCK, XBLOCK=XBLOCK)
             ref = tensor_product(input1_e3nn, input2_e3nn, sorted=False, regroup_output=False).array
             print("correctness : torch vs e3nn")
             np.testing.assert_allclose(result.cpu().numpy(), ref, atol=1e-2)
@@ -127,5 +127,5 @@ if __name__ == "__main__":
             from torch._inductor.utils import print_performance
             print(f"ours - batch {Batch} lmax {lmax} channel {channel} {print_performance(lambda : my_coo(coo, coovalue, input1, input2, output, Batch, channel, coo.shape[0]))*1000:.3f} ms")
             print(f"ours2 - batch {Batch} lmax {lmax} channel {channel} {print_performance(lambda :  my_coo_i_jk(j_, k_, i_, val_, input1, input2, output2, Batch, channel, i_.shape[0], wsize))*1000:.3f} ms")
-            print(f"ours_no_channel_triton - batch {Batch} lmax {lmax} {print_performance(lambda :  my_coo_triton[(triton.cdiv(i_.shape[0], XBLOCK), triton.cdiv(Batch, YBLOCK))](j_, k_, i_, val_, input1_no_channel, input2_no_channel, output4, Batch, i_.shape[0], YBLOCK=YBLOCK, XBLOCK=XBLOCK))*1000:.3f} ms")
+            print(f"ours_no_channel_triton - batch {Batch} lmax {lmax} {print_performance(lambda :  my_coo_triton[(triton.cdiv(i_.shape[0], XBLOCK), triton.cdiv(Batch, YBLOCK))](j_, k_, i_, val_, input1_no_channel, input2_no_channel, output4, Batch, i_.shape[0], W=wsize, YBLOCK=YBLOCK, XBLOCK=XBLOCK))*1000:.3f} ms")
             print(f"jax - batch {Batch} lmax {lmax} channel {channel} {benchmark_jax(tensor_product_jax, input1_e3nn, input2_e3nn):.3f} ms")
