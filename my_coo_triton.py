@@ -89,14 +89,15 @@ def my_coo_triton(
     # Note that for our purposes L1, L2, and L3 are pre-defined constants.
     ynumel, # B
     xnumel, # Po
+    l1_dim : tl.constexpr, l2_dim : tl.constexpr, l3_dim : tl.constexpr,
     W : tl.constexpr, # Pi
     YBLOCK : tl.constexpr, XBLOCK : tl.constexpr):
     # First define offsets and strides
     y_offset = tl.program_id(1) * YBLOCK
     x_offset = tl.program_id(0) * XBLOCK
-    l1_dim = 36
-    l2_dim = 36
-    l3_dim = 1296
+    #l1_dim = 36
+    #l2_dim = 36
+    #l3_dim = 1296
     y_stride = l1_dim
     x_stride = 1
 
