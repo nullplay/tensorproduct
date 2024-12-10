@@ -23,7 +23,7 @@ def TensorProduct(W_i, W_j, W_k, W_val,
 \end{lstlisting}
 %\end{figure}
 
-The tensor product kernel is implemented using Triton~\cite{b1}.
+The tensor product kernel is implemented using Triton~\cite{tillet2019triton}.
 We design the kernel such that each Triton program works on a \textit{block of non-zeros}.
 The pseudocode is given in \autoref{lst:simple_tensor_prod}.
 Given the input \texttt{i}, \texttt{j}, and \texttt{k} coordinate values of the COO,
