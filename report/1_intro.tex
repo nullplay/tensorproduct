@@ -1,5 +1,10 @@
 \section{Introduction}
 \label{sec:intro}
 
-INTRO
+
+Equivariant neural networks\cite{e3nn} are specially designed networks capable of handling input transformations such as rotations and shifts. For instance, if the input to an equivariant neural network is rotated by 90 degrees, the output feature map will transform (or permute) in the same way.
+
+Among the libraries available for building equivariant neural networks, \emph{e3nn-jax}\cite{e3nnjax} stands out as a state-of-the-art tool. It is designed for constructing and accelerating neural networks that are equivariant to 3D rotations, translations, and other symmetries. At its core, e3nn-jax leverages irreducible representations of the 3D rotation group (SO(3)) to process geometric data, such as atomic structures, molecules, and point clouds, within the Jax\cite{jax} framework.
+
+A fundamental operation in e3nn-jax is the tensor product, which combines features expressed in these irreducible representations. This operation enables the network to exchange information between different rotational symmetries while preserving equivariance, ensuring that the model maintains consistency under transformations.
 
