@@ -1,0 +1,55 @@
+% dsm: Copied from /usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty ,
+% but removing bin from morekeywords[2], b/c deletekeywords ignores it somehow.
+\lstdefinelanguage{PythonNoBin}%
+  {morekeywords={access,and,break,class,continue,def,del,elif,else,%
+      except,exec,finally,for,from,global,if,import,in,is,lambda,not,%
+      or,pass,print,raise,return,try,while},%
+  % Built-ins
+   morekeywords=[2]{abs,all,any,basestring,bool,bytearray,callable,chr,
+     classmethod,cmp,compile,complex,delattr,dict,dir,divmod,enumerate,eval,
+     execfile,file,filter,float,format,frozenset,getattr,globals,hasattr,
+     help,hex,id,input,int,isinstance,issubclass,iter,len,list,locals,long,map,
+     max,memoryview,min,object,oct,open,ord,pow,property,range,raw_input,
+     reduce,reload,repr,reversed,round,set,setattr,slice,sorted,staticmethod,str,
+     sum,super,tuple,type,unichr,unicode,vars,xrange,zip,apply,buffer,coerce,
+     intern},
+   sensitive=true,%
+   morecomment=[l]\#,%
+   morestring=[b]',%
+   morestring=[b]",%
+   morestring=[s]{'''}{'''},% used for documentation text (mulitiline strings)
+   morestring=[s]{"""}{"""},% added by Philipp Matthias Hahn
+   morestring=[s]{r'}{'},% `raw' strings
+   morestring=[s]{r"}{"},%
+   morestring=[s]{r'''}{'''},%
+   morestring=[s]{r"""}{"""},%
+   morestring=[s]{u'}{'},% unicode strings
+   morestring=[s]{u"}{"},%
+   morestring=[s]{u'''}{'''},%
+   morestring=[s]{u"""}{"""}%
+  }%
+
+  \lstdefinestyle{custompython}{
+ %aboveskip=0in,
+ belowskip=0in,
+ %abovecaptionskip=0in,
+ belowcaptionskip=-10pt,
+ %belowcaptionskip=1\baselineskip,
+ breaklines=true,
+ captionpos=b,
+ language=PythonNoBin,
+ showstringspaces=false,
+ numbers=left,
+ stepnumber=1,
+ % dsm: semibold
+ % yyf: semibold will just be bold on Ubuntu 20.04, disable it
+ %basicstyle={\linespread{0.75}\fontseries{sb}\small\ttfamily},
+ basicstyle={\linespread{0.75}\footnotesize\ttfamily},
+ keywordstyle=\bfseries,
+ %% columns=fullflexible,
+ xleftmargin=2em,
+ frame=single,
+ framexleftmargin=2em,
+ commentstyle=\itshape\color{green!40!black},
+ morekeywords={to,yield,parallel},
+}
