@@ -1,3 +1,28 @@
 \section{Background}
 \label{sec:background}
 
+\subsection{Tensor Product}
+
+In \textbf{e3nn}, there are multiple variants of the tensor product operation. In this project, we focus on a specific form of the tensor product, which can be expressed using Einsum notation as follows:
+
+\[
+Out_{b,k} = W_{i,j,k} \ast In1_{b,i} \ast In2_{b,j}
+\]
+
+This operation multiplies two batched inputs, \textbf{In1} and \textbf{In2}, with a 3D weight tensor \textbf{W}. The result is stored in \textbf{Out} by reducing over dimensions \(i\) and \(j\).
+
+\subsection{e3nn-jax Implementation}
+
+The current state-of-the-art implementation in e3nn-jax takes advantage of the fact that the weight tensor \(W\) exhibits a special sparsity pattern: a block-diagonal sparse structure. Instead of storing the full tensor \(W_{i,j,k}\), \textbf{e3nn-jax} stores only the dense blocks within \(W\). For each block, the output is computed as:
+
+\[
+Out_{b,k} = WBlock_{i,j,k} \ast In1_{b,i} \ast In2_{b,j}
+\]
+
+These computations leverage optimized vendor libraries such as cuBLAS\cite{nvidia2021cublas} for efficiency. Additionally, all JAX code is \textit{JIT-compiled}, which significantly accelerates performance compared to running the same code in the Python interpreter.
+
+\subsection{Leveraging Sparsity Limitations}
+
+Despite these optimizations, our investigation revealed that e3nn-jax does not fully exploit the sparsity in \(W\). Specifically, we observed that each dense block within the block-diagonal sparse format has only about \textbf{10\% non-zero values}, meaning a significant number of unnecessary operations (e.g., zero multiplications) are still being performed.
+
+To address this issue, our work implements two optimized versions of the tensor product that fully leverage sparsity and GPU capabilities, reducing redundant computations and improving performance.
