@@ -1,3 +1,5 @@
 __pycache__/
 torch_compile_debug/
 final_project_devctr/
+*.log
+*.aux
