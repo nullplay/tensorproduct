@@ -2,8 +2,6 @@ import torch
 import numpy as np
 from torch._inductor.utils import fresh_inductor_cache
 
-torch._inductor.config.triton.prefer_nd_tiling=True
-
 #window_size=p1
 #w = output idx
 #o = input1 idx
