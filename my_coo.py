@@ -1,29 +1,6 @@
 import torch
 from torch._inductor.utils import fresh_inductor_cache
 
-# Input1_[b,c,p] = Input1[b,c,imap1[p]]
-# Input2_[b,c,p] = Input2[b,c,imap2[p]]
-# product[b,c,p] = W[p] * Input1_[b,c,p] * Input2_[b,c,p]
-# Output[b,c,omap[p]] += product[b,c,p]
-#
-
-# for b in Batch:
-# for c in Channel:
-# for p in number of nonzeros:
-#   l1 = coo_l1[p]
-#   l2 = coo_l2[p]
-#   l3 = coo_l3[p]
-#   wval = coovalue[p]
-
-#   Input1_ = Input1[b,c,l1]
-#   Input2_ = Input2[b,c,l2]
-#   product = wval * Input1_ * Input2_
-#   Output[b,c,l3] += product
-
-
-#torch._inductor.config.max_autotune_pointwise=True
-#torch._inductor.config.triton.prefer_nd_tiling=True
-
 @fresh_inductor_cache()
 @torch.compile(mode="max-autotune-no-cudagraphs")
 def my_coo(coo, coovalue, Input1, Input2, output, B, C, P):
